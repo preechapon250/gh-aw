@@ -801,6 +801,9 @@ async function main() {
     const agentOutput = loadAgentOutput();
     if (!agentOutput.success) {
       core.info("No agent output available - nothing to process");
+      // Set empty outputs for downstream steps
+      core.setOutput("temporary_id_map", "{}");
+      core.setOutput("processed_count", 0);
       return;
     }
 
@@ -811,6 +814,9 @@ async function main() {
 
     if (messageHandlers.size === 0) {
       core.info("No handlers loaded - nothing to process");
+      // Set empty outputs for downstream steps
+      core.setOutput("temporary_id_map", "{}");
+      core.setOutput("processed_count", 0);
       return;
     }
 
@@ -870,6 +876,14 @@ async function main() {
     if (skippedNoHandlerResults.length > 0) {
       core.warning(`${skippedNoHandlerResults.length} message(s) were skipped because no handler was loaded. Check your workflow's safe-outputs configuration.`);
     }
+
+    // Export temporary ID map as output for downstream steps (e.g., assign_to_agent)
+    const temporaryIdMapJson = JSON.stringify(processingResult.temporaryIdMap);
+    core.setOutput("temporary_id_map", temporaryIdMapJson);
+    core.info(`Exported temporary ID map with ${Object.keys(processingResult.temporaryIdMap).length} mapping(s)`);
+
+    // Export processed count for consistency with project handler
+    core.setOutput("processed_count", successCount);
 
     core.info("Safe Output Handler Manager completed");
   } catch (error) {
