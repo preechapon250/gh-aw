@@ -393,7 +393,7 @@ engine: copilot
             {
               sha: "src123",
               commit: {
-                committer: { date: "2024-01-01T12:00:00Z" },
+                committer: { date: "2024-01-01T13:00:00Z" }, // Source is newer
                 message: "Source commit",
               },
             },
@@ -404,37 +404,34 @@ engine: copilot
             {
               sha: "lock123",
               commit: {
-                committer: { date: "2024-01-01T13:00:00Z" },
+                committer: { date: "2024-01-01T12:00:00Z" }, // Lock is older
                 message: "Lock commit",
               },
             },
           ],
         });
 
-      mockGithub.rest.repos.getContent.mockResolvedValueOnce({
-        data: {
-          type: "file",
-          encoding: "base64",
-          content: Buffer.from(lockFileContent).toString("base64"),
-        },
-      });
-
-      // Mock the gh aw hash-frontmatter command to return a matching hash
-      mockExec.exec.mockImplementation((command, args, options) => {
-        if (command === "gh" && args[0] === "aw" && args[1] === "hash-frontmatter") {
-          // Call the stdout listener with a hash
-          options.listeners.stdout(Buffer.from(validHash + "\n"));
-          return Promise.resolve(0);
-        }
-        return Promise.resolve(0);
-      });
+      mockGithub.rest.repos.getContent
+        .mockResolvedValueOnce({
+          data: {
+            type: "file",
+            encoding: "base64",
+            content: Buffer.from(lockFileContent).toString("base64"),
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            type: "file",
+            encoding: "base64",
+            content: Buffer.from(mdFileContent).toString("base64"),
+          },
+        });
 
       await main();
 
       expect(mockCore.info).toHaveBeenCalledWith(expect.stringContaining("Frontmatter hash comparison"));
       expect(mockCore.info).toHaveBeenCalledWith(expect.stringContaining("Lock file hash:"));
       expect(mockCore.info).toHaveBeenCalledWith(expect.stringContaining("Recomputed hash:"));
-      expect(mockExec.exec).toHaveBeenCalledWith("gh", ["aw", "hash-frontmatter", ".github/workflows/test.md"], expect.any(Object));
     });
 
     it("should handle missing frontmatter hash in lock file", async () => {
@@ -450,7 +447,7 @@ jobs:
             {
               sha: "src123",
               commit: {
-                committer: { date: "2024-01-01T12:00:00Z" },
+                committer: { date: "2024-01-01T13:00:00Z" }, // Source is newer
                 message: "Source commit",
               },
             },
@@ -461,7 +458,7 @@ jobs:
             {
               sha: "lock123",
               commit: {
-                committer: { date: "2024-01-01T13:00:00Z" },
+                committer: { date: "2024-01-01T12:00:00Z" }, // Lock is older
                 message: "Lock commit",
               },
             },
@@ -496,7 +493,7 @@ jobs:
             {
               sha: "src123",
               commit: {
-                committer: { date: "2024-01-01T12:00:00Z" },
+                committer: { date: "2024-01-01T13:00:00Z" }, // Source is newer
                 message: "Source commit",
               },
             },
@@ -507,34 +504,27 @@ jobs:
             {
               sha: "lock123",
               commit: {
-                committer: { date: "2024-01-01T13:00:00Z" },
+                committer: { date: "2024-01-01T12:00:00Z" }, // Lock is older
                 message: "Lock commit",
               },
             },
           ],
         });
 
-      mockGithub.rest.repos.getContent.mockResolvedValueOnce({
-        data: {
-          type: "file",
-          encoding: "base64",
-          content: Buffer.from(lockFileContent).toString("base64"),
-        },
-      });
-
-      // Mock the gh aw hash-frontmatter command to fail
-      mockExec.exec.mockImplementation((command, args, options) => {
-        if (command === "gh" && args[0] === "aw" && args[1] === "hash-frontmatter") {
-          options.listeners.stderr(Buffer.from("Command failed"));
-          return Promise.resolve(1); // Exit code 1 indicates failure
-        }
-        return Promise.resolve(0);
-      });
+      mockGithub.rest.repos.getContent
+        .mockResolvedValueOnce({
+          data: {
+            type: "file",
+            encoding: "base64",
+            content: Buffer.from(lockFileContent).toString("base64"),
+          },
+        })
+        .mockRejectedValueOnce(new Error("Failed to fetch workflow file"));
 
       await main();
 
       expect(mockCore.info).toHaveBeenCalledWith(expect.stringContaining("Could not compute frontmatter hash"));
-      expect(mockCore.setFailed).not.toHaveBeenCalled(); // Should not fail the workflow
+      expect(mockCore.setFailed).toHaveBeenCalled(); // Should fail because timestamp check failed
     });
   });
 });
