@@ -36,9 +36,11 @@ package workflow
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/github/gh-aw/pkg/constants"
 	"github.com/github/gh-aw/pkg/logger"
+	"github.com/github/gh-aw/pkg/parser"
 )
 
 var engineValidationLog = logger.New("workflow:engine_validation")
@@ -66,8 +68,32 @@ func (c *Compiler) validateEngine(engineID string) error {
 	}
 
 	engineValidationLog.Printf("Engine ID %s not found: %v", engineID, err)
-	// Provide helpful error with valid options
-	return fmt.Errorf("invalid engine: %s. Valid engines are: copilot, claude, codex, custom.\n\nExample:\nengine: copilot\n\nSee: %s", engineID, constants.DocsEnginesURL)
+
+	// Get list of valid engine IDs from the engine registry
+	validEngines := c.engineRegistry.GetSupportedEngines()
+
+	// Try to find close matches for "did you mean" suggestion
+	suggestions := parser.FindClosestMatches(engineID, validEngines, 1)
+
+	// Build comma-separated list of valid engines for error message
+	enginesStr := strings.Join(validEngines, ", ")
+
+	// Build error message with helpful context
+	errMsg := fmt.Sprintf("invalid engine: %s. Valid engines are: %s.\n\nExample:\nengine: copilot\n\nSee: %s",
+		engineID,
+		enginesStr,
+		constants.DocsEnginesURL)
+
+	// Add "did you mean" suggestion if we found a close match
+	if len(suggestions) > 0 {
+		errMsg = fmt.Sprintf("invalid engine: %s. Valid engines are: %s.\n\nDid you mean: %s?\n\nExample:\nengine: copilot\n\nSee: %s",
+			engineID,
+			enginesStr,
+			suggestions[0],
+			constants.DocsEnginesURL)
+	}
+
+	return fmt.Errorf("%s", errMsg)
 }
 
 // validateSingleEngineSpecification validates that only one engine field exists across all files

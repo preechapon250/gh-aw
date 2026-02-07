@@ -8,6 +8,7 @@ import (
 	"github.com/github/gh-aw/pkg/cli"
 	"github.com/github/gh-aw/pkg/console"
 	"github.com/github/gh-aw/pkg/constants"
+	"github.com/github/gh-aw/pkg/parser"
 	"github.com/github/gh-aw/pkg/workflow"
 	"github.com/spf13/cobra"
 )
@@ -24,8 +25,23 @@ var bannerFlag bool
 
 // validateEngine validates the engine flag value
 func validateEngine(engine string) error {
-	if engine != "" && engine != "claude" && engine != "codex" && engine != "copilot" && engine != "custom" {
-		return fmt.Errorf("invalid engine value '%s'. Must be 'claude', 'codex', 'copilot', or 'custom'", engine)
+	// Get the global engine registry
+	registry := workflow.GetGlobalEngineRegistry()
+	validEngines := registry.GetSupportedEngines()
+
+	if engine != "" && !registry.IsValidEngine(engine) {
+		// Try to find close matches for "did you mean" suggestion
+		suggestions := parser.FindClosestMatches(engine, validEngines, 1)
+
+		errMsg := fmt.Sprintf("invalid engine value '%s'. Must be '%s'",
+			engine, strings.Join(validEngines, "', '"))
+
+		if len(suggestions) > 0 {
+			errMsg = fmt.Sprintf("invalid engine value '%s'. Must be '%s'.\n\nDid you mean: %s?",
+				engine, strings.Join(validEngines, "', '"), suggestions[0])
+		}
+
+		return fmt.Errorf("%s", errMsg)
 	}
 	return nil
 }
