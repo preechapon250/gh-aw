@@ -183,6 +183,7 @@ export default defineConfig({
 						{ label: 'IssueOps', link: '/patterns/issueops/' },
 						{ label: 'LabelOps', link: '/patterns/labelops/' },
 						{ label: 'ProjectOps', link: '/patterns/projectops/' },
+						{ label: 'DataOps', link: '/patterns/dataops/' },
 						{ label: 'TaskOps', link: '/patterns/taskops/' },
 						{ label: 'MultiRepoOps', link: '/patterns/multirepoops/' },
 						{ label: 'SideRepoOps', link: '/patterns/siderepoops/' },
