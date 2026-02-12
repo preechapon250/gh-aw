@@ -90,10 +90,19 @@ func generateSafeOutputsConfig(data *WorkflowData) string {
 			)
 		}
 		if data.SafeOutputs.AddComments != nil {
-			safeOutputsConfig["add_comment"] = generateMaxWithTargetConfig(
+			additionalFields := make(map[string]any)
+			// Note: AddCommentsConfig has Target, TargetRepoSlug, AllowedRepos but not embedded SafeOutputTargetConfig
+			// So we need to construct the target config manually
+			targetConfig := SafeOutputTargetConfig{
+				Target:         data.SafeOutputs.AddComments.Target,
+				TargetRepoSlug: data.SafeOutputs.AddComments.TargetRepoSlug,
+				AllowedRepos:   data.SafeOutputs.AddComments.AllowedRepos,
+			}
+			safeOutputsConfig["add_comment"] = generateTargetConfigWithRepos(
+				targetConfig,
 				data.SafeOutputs.AddComments.Max,
 				1, // default max
-				data.SafeOutputs.AddComments.Target,
+				additionalFields,
 			)
 		}
 		if data.SafeOutputs.CreateDiscussions != nil {
@@ -118,11 +127,18 @@ func generateSafeOutputsConfig(data *WorkflowData) string {
 			)
 		}
 		if data.SafeOutputs.CloseIssues != nil {
-			safeOutputsConfig["close_issue"] = generateMaxWithRequiredFieldsConfig(
+			additionalFields := make(map[string]any)
+			if len(data.SafeOutputs.CloseIssues.RequiredLabels) > 0 {
+				additionalFields["required_labels"] = data.SafeOutputs.CloseIssues.RequiredLabels
+			}
+			if data.SafeOutputs.CloseIssues.RequiredTitlePrefix != "" {
+				additionalFields["required_title_prefix"] = data.SafeOutputs.CloseIssues.RequiredTitlePrefix
+			}
+			safeOutputsConfig["close_issue"] = generateTargetConfigWithRepos(
+				data.SafeOutputs.CloseIssues.SafeOutputTargetConfig,
 				data.SafeOutputs.CloseIssues.Max,
 				1, // default max
-				data.SafeOutputs.CloseIssues.RequiredLabels,
-				data.SafeOutputs.CloseIssues.RequiredTitlePrefix,
+				additionalFields,
 			)
 		}
 		if data.SafeOutputs.CreatePullRequests != nil {
@@ -152,10 +168,15 @@ func generateSafeOutputsConfig(data *WorkflowData) string {
 			)
 		}
 		if data.SafeOutputs.AddLabels != nil {
-			safeOutputsConfig["add_labels"] = generateMaxWithAllowedConfig(
+			additionalFields := make(map[string]any)
+			if len(data.SafeOutputs.AddLabels.Allowed) > 0 {
+				additionalFields["allowed"] = data.SafeOutputs.AddLabels.Allowed
+			}
+			safeOutputsConfig["add_labels"] = generateTargetConfigWithRepos(
+				data.SafeOutputs.AddLabels.SafeOutputTargetConfig,
 				data.SafeOutputs.AddLabels.Max,
 				3, // default max
-				data.SafeOutputs.AddLabels.Allowed,
+				additionalFields,
 			)
 		}
 		if data.SafeOutputs.RemoveLabels != nil {
